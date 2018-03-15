@@ -28,6 +28,8 @@ except ImportError:
     warnings.warn("pandas is not installed, so the parse_fcs function "
                   "can only be used together with numpy.")
 
+BYTE_SEP = b'\x0C'
+
 
 class ParserFeatureNotImplementedError(Exception):
     """Raised when encountering fcs files with an unfamiliar feature"""
@@ -419,7 +421,7 @@ class FCSParser(object):
         """
         Outputs the heads to a text format suitable for writing to an fcs file
         """
-        self.header_space_characters = '    '
+        self.header_space_characters = b'    '
         self.header_offset_block_length = 8
 
         # set default (other methods rely on these having values)
@@ -438,22 +440,23 @@ class FCSParser(object):
         self.analysis_offset_start = 0
         self.analysis_offset_end = 0
 
-        return "".join([self.version(),
-                        self.header_space_characters,
-                        str(self.text_offset_start).rjust(self.header_offset_block_length),
-                        str(self.text_offset_end).rjust(self.header_offset_block_length),
-                        str(self.data_offset_start).rjust(self.header_offset_block_length),
-                        str(self.data_offset_end).rjust(self.header_offset_block_length),
-                        str(self.analysis_offset_start).rjust(self.header_offset_block_length),
-                        str(self.analysis_offset_end).rjust(self.header_offset_block_length),
-                        "\x0C"])
+        return b''.join([self.version(),
+                         self.header_space_characters,
+                         str(self.text_offset_start).rjust(self.header_offset_block_length).encode('utf-8'),
+                         str(self.text_offset_end).rjust(self.header_offset_block_length).encode('utf-8'),
+                         str(self.data_offset_start).rjust(self.header_offset_block_length).encode('utf-8'),
+                         str(self.data_offset_end).rjust(self.header_offset_block_length).encode('utf-8'),
+                         str(self.analysis_offset_start).rjust(self.header_offset_block_length).encode('utf-8'),
+                         str(self.analysis_offset_end).rjust(self.header_offset_block_length).encode('utf-8'),
+                         BYTE_SEP])
 
     def _annotation_to_string(self):
         """
         Outputs the annotation dictionary to a text format suitable for writing
         to an fcs file
         """
-        self.annotation[self.T_SUPPL_TEXT_START_KEYWORD] = str(self.text_offset_start).rjust(self.OFFSET_FIXED_WIDTH, '0')
+        self.annotation[self.T_SUPPL_TEXT_START_KEYWORD] = str(self.text_offset_start).rjust(self.OFFSET_FIXED_WIDTH,
+                                                                                             '0')
         self.annotation[self.T_SUPPL_TEXT_END_KEYWORD] = str(self.text_offset_end).rjust(self.OFFSET_FIXED_WIDTH, '0')
         self.annotation[self.T_ANALYSIS_START_KEYWORD] = str(self.analysis_offset_start)
         self.annotation[self.T_ANALYSIS_END_KEYWORD] = str(self.analysis_offset_end)
@@ -465,17 +468,17 @@ class FCSParser(object):
             # __header__ shouldn't be a part of the TEXT
             if k == '__header__':
                 continue
-            formatted_annotation.append("\x0C".join([str(k), str(v)]))
+            formatted_annotation.append(BYTE_SEP.join([str(k).encode('utf-8'), str(v).encode('utf-8')]))
 
-        return "\x0C".join(formatted_annotation)
+        return BYTE_SEP.join(formatted_annotation)
 
     def _data_to_byte_string(self):
         # this conversion currenly only supports data points as single precision floating point values,
         # $DATATYPE F per the fcs standard http://isac-net.org/PDFS/90/9090600d-19be-460d-83fc-f8a8b004e0f9.pdf
         if self.annotation['$DATATYPE'] != 'F' and self.annotation['$DATATYPE'] != 'I':
-            raise exception('Only fcs files with $DATATYPE F (single precision floating point values) OR I accepted')
+            raise Exception('Only fcs files with $DATATYPE F (single precision floating point values) OR I accepted')
 
-        data_byte_string = "\x0C"
+        data_byte_string = BYTE_SEP
         for row in self._data:
             for column in row:
                 data_byte_string += struct.pack('>f', column)
@@ -486,7 +489,7 @@ class FCSParser(object):
         Writes the sections back out to an FCS file.  Useful for making changes
         to the keywords or data section and then saving
         """
-        f = open(path, 'w')
+        f = open(path, 'wb')
         f.write(self._header_to_string())
         f.write(self._annotation_to_string())
         f.write(self._data_to_byte_string())
@@ -572,8 +575,8 @@ class FCSParser(object):
 
 
 def parse(path, meta_data_only=False, output_format='DataFrame', compensate=False,
-              channel_naming='$PnS',
-              reformat_meta=False):
+          channel_naming='$PnS',
+          reformat_meta=False):
     """
     Parse an fcs file at the location specified by the path.
 
