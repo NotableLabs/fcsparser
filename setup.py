@@ -4,6 +4,7 @@ import os
 
 from setuptools import setup, find_packages
 
+
 def get_package_version(path):
     '''Extracts the version'''
     with open(VERSION_FILE, "rt") as f:
@@ -19,12 +20,14 @@ def get_package_version(path):
 
     return version
 
+
 def get_fcs_files():
     matches = []
     for root, dirnames, filenames in os.walk('fcsparser'):
-      for filename in fnmatch.filter(filenames, '*.fcs'):
-        matches.append(os.path.join(root, filename))
+        for filename in fnmatch.filter(filenames, '*.fcs'):
+            matches.append(os.path.join(root, filename))
     return matches
+
 
 VERSION_FILE = "fcsparser/_version.py"
 
@@ -35,7 +38,6 @@ with open('README.rst', 'r') as f:
 
 setup(
     name='fcsparser',
-    packages=find_packages(),
     version=version,
     description='A python package for reading raw fcs files',
     author='Eugene Yurtsev',
@@ -44,22 +46,20 @@ setup(
     download_url='https://github.com/eyurtsev/fcsparser/archive/v{0}.zip'.format(version),
     keywords=['flow cytometry', 'data analysis', 'cytometry', 'parser', 'data'],
     license='MIT',
-
     install_requires=[
         "setuptools",
     ],
-
     classifiers=[
         'Intended Audience :: Science/Research',
         'Programming Language :: Python :: 2',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'Topic :: Scientific/Engineering :: Medical Science Apps.',
     ],
-
     long_description=README_content,
-    include_package_data = True,
+    include_package_data=True,
 
-    package_data={
-        'fcsparser': get_fcs_files(),
-    },
+    packages=find_packages(exclude=["*.tests",
+                                    "*.tests.*",
+                                    "tests.*",
+                                    "tests"])
 )

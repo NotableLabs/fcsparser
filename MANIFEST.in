@@ -1,2 +1,2 @@
 include *.txt
-global-include *.fcs
+prune fcsparser/tests/
