@@ -478,11 +478,7 @@ class FCSParser(object):
         if self.annotation['$DATATYPE'] != 'F' and self.annotation['$DATATYPE'] != 'I':
             raise Exception('Only fcs files with $DATATYPE F (single precision floating point values) OR I accepted')
 
-        data_byte_string = BYTE_SEP
-        for row in self._data:
-            for column in row:
-                data_byte_string += struct.pack('>f', column)
-        return data_byte_string
+        return BYTE_SEP + self._data.tobytes()
 
     def write_to_file(self, path):
         """
