@@ -115,8 +115,6 @@ class FCSParser(object):
         self.channel_numbers = []
         self._analysis = ''
 
-        self.endian = None
-
         if path is not None:
             self._file_size = os.path.getsize(path)
 
