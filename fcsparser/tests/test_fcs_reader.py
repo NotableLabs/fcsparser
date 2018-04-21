@@ -360,7 +360,7 @@ class TestFCSReader(unittest.TestCase):
             fcs_parser.write_to_file(written_fcs.name)
 
             # use filecmp to compare the files
-            filecmp.cmp(fname, written_fcs.name)
+            self.assertTrue(filecmp.cmp(fname, written_fcs.name))
 
             # read the written file and assert that the annotations, and data are equal
             new_fcs_parser = FCSParser(written_fcs.name)
