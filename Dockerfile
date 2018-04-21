@@ -4,5 +4,5 @@ RUN mkdir /fcsparser
 WORKDIR /fcsparser
 COPY . /fcsparser
 
-RUN pip install pytest testfixtures ipython
+RUN pip install pytest ipython
 RUN pip install -e .

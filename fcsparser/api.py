@@ -307,13 +307,7 @@ class FCSParser(object):
         num_events = text['$TOT']  # Number of events recorded
         num_pars = text['$PAR']  # Number of parameters recorded
 
-        if text['$BYTEORD'].strip() == '1,2,3,4' or text['$BYTEORD'].strip() == '1,2':
-            endian = '<'
-        elif text['$BYTEORD'].strip() == '4,3,2,1' or text['$BYTEORD'].strip() == '2,1':
-            endian = '>'
-        else:
-            msg = 'Unrecognized byte order ({})'.format(text['$BYTEORD'])
-            raise ParserFeatureNotImplementedError(msg)
+        endian = self._get_endian(text['$BYTEORD'])
 
         # dictionary to convert from FCS format to numpy convention
         conversion_dict = {'F': 'f', 'D': 'f', 'I': 'u'}
@@ -361,6 +355,15 @@ class FCSParser(object):
             data = data.byteswap().newbyteorder()
 
         self._data = data
+
+    def _get_endian(self, byteord):
+        if byteord.strip() == '1,2,3,4' or byteord.strip() == '1,2':
+            return '<'
+        elif byteord.strip() == '4,3,2,1' or byteord.strip() == '2,1':
+            return '>'
+        else:
+            msg = 'Unrecognized byte order ({})'.format(byteord)
+            raise ParserFeatureNotImplementedError(msg)
 
     def _check_assumptions(self):
         """
@@ -478,7 +481,8 @@ class FCSParser(object):
         if self.annotation['$DATATYPE'] != 'F' and self.annotation['$DATATYPE'] != 'I':
             raise Exception('Only fcs files with $DATATYPE F (single precision floating point values) OR I accepted')
 
-        return BYTE_SEP + self._data.tobytes()
+        endian = self._get_endian(self.annotation['$BYTEORD'])
+        return BYTE_SEP + self._data.astype('{}f'.format(endian)).tobytes()
 
     def write_to_file(self, path):
         """
