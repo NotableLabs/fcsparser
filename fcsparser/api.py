@@ -115,6 +115,8 @@ class FCSParser(object):
         self.channel_numbers = []
         self._analysis = ''
 
+        self.endian = None
+
         if path is not None:
             self._file_size = os.path.getsize(path)
 
@@ -308,9 +310,9 @@ class FCSParser(object):
         num_pars = text['$PAR']  # Number of parameters recorded
 
         if text['$BYTEORD'].strip() == '1,2,3,4' or text['$BYTEORD'].strip() == '1,2':
-            endian = '<'
+            self.endian = '<'
         elif text['$BYTEORD'].strip() == '4,3,2,1' or text['$BYTEORD'].strip() == '2,1':
-            endian = '>'
+            self.endian = '>'
         else:
             msg = 'Unrecognized byte order ({})'.format(text['$BYTEORD'])
             raise ParserFeatureNotImplementedError(msg)
@@ -327,7 +329,7 @@ class FCSParser(object):
         bytes_per_par_list = [int(text['$P{0}B'.format(i)] / 8) for i in self.channel_numbers]
 
         par_numeric_type_list = [
-            '{endian}{type}{size}'.format(endian=endian, type=conversion_dict[text['$DATATYPE']],
+            '{endian}{type}{size}'.format(endian=self.endian, type=conversion_dict[text['$DATATYPE']],
                                           size=bytes_per_par)
             for bytes_per_par in bytes_per_par_list]
 
@@ -356,7 +358,7 @@ class FCSParser(object):
         # Convert to native byte order 
         # This is needed for working with pandas datastructures
         native_code = '<' if (sys.byteorder == 'little') else '>'
-        if endian != native_code:
+        if self.endian != native_code:
             # swaps the actual bytes and also the endianness
             data = data.byteswap().newbyteorder()
 
@@ -478,7 +480,12 @@ class FCSParser(object):
         if self.annotation['$DATATYPE'] != 'F' and self.annotation['$DATATYPE'] != 'I':
             raise Exception('Only fcs files with $DATATYPE F (single precision floating point values) OR I accepted')
 
-        return BYTE_SEP + self._data.tobytes()
+        native_code = '<' if (sys.byteorder == 'little') else '>'
+        if self.endian != native_code:
+            out_bytes = self._data.byteswap().newbyteorder()
+        else:
+            out_bytes = self._data
+        return BYTE_SEP + out_bytes.tobytes()
 
     def write_to_file(self, path):
         """
