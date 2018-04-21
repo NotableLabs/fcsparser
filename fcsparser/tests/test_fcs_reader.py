@@ -8,6 +8,8 @@ from __future__ import print_function
 import warnings
 import timeit
 import unittest
+import tempfile
+import hashlib
 
 import numpy
 from numpy import array
@@ -16,7 +18,6 @@ import filecmp
 
 from fcsparser import parse as parse_fcs
 from fcsparser.api import FCSParser as FCSParser
-from testfixtures import TempDirectory
 
 _ROOT = os.path.abspath(os.path.dirname(__file__))
 _ROOT = os.path.join(_ROOT, 'data', 'FlowCytometers')
@@ -355,9 +356,24 @@ class TestFCSReader(unittest.TestCase):
         """ Reading a FCS file and writing to disk the same """
         fname = file_formats['IntelliCyt iQue']
         fcs_parser = FCSParser(fname)
-        with TempDirectory() as d:
-            fcs_parser.write_to_file(os.path.join(d.path, 'test_fcs_file.fcs'))
-            filecmp.cmp(fname, os.path.join(d.path, 'test_fcs_file.fcs'))
+        with tempfile.NamedTemporaryFile(suffix='.fcs') as written_fcs:
+            fcs_parser.write_to_file(written_fcs.name)
+
+            # use filecmp to compare the files
+            filecmp.cmp(fname, written_fcs.name)
+
+            # read the written file and assert that the annotations, and data are equal
+            new_fcs_parser = FCSParser(written_fcs.name)
+            self.assertDictEqual(fcs_parser.annotation, new_fcs_parser.annotation)
+            self.assertTrue(numpy.array_equal(fcs_parser.data, new_fcs_parser.data))
+
+            # compare the md5 checksum for the original and written file
+            self._compare_file_md5(fname, written_fcs.name)
+
+    def _compare_file_md5(self, file1, file2):
+        with open(file1, 'rb') as f1, open(file2, 'rb') as f2:
+            self.assertEqual(hashlib.md5(f1.read()).hexdigest(),
+                             hashlib.md5(f2.read()).hexdigest())
 
     def test_cloning_an_fcs_file_with_a_subset_of_data(self):
         """ Reading a FCS file, modifying and writing to disk """
@@ -366,9 +382,9 @@ class TestFCSReader(unittest.TestCase):
         # Only save a subset of the data points
         new_fcs_parser = fcs_parser.clone(data=fcs_parser.data[:1000])
 
-        with TempDirectory() as d:
-            new_fcs_parser.write_to_file(os.path.join(d.path, 'test_fcs_file.fcs'))
-            new_fcs_parser = FCSParser(os.path.join(d.path, 'test_fcs_file.fcs'))
+        with tempfile.NamedTemporaryFile(suffix='.fcs') as written_fcs:
+            new_fcs_parser.write_to_file(written_fcs.name)
+            new_fcs_parser = FCSParser(written_fcs.name)
             self.assertTrue(new_fcs_parser.data.shape == fcs_parser.data[:1000].shape)
 
 if __name__ == '__main__':
