@@ -556,6 +556,14 @@ class FCSParser(object):
             # __header__ shouldn't be a part of the TEXT
             if k == "__header__":
                 continue
+
+            # Since we are only capable of writing the data as float, this must
+            # be changed to "F" regardless of the original value
+            # Not changing the actual value in annotation since that
+            # would break the compatibility check in _data_to_byte_string()
+            if k == "$DATATYPE":
+                v = "F"
+
             formatted_annotation.append(
                 BYTE_SEP.join([str(k).encode("utf-8"), str(v).encode("utf-8")])
             )
@@ -571,6 +579,8 @@ class FCSParser(object):
             )
 
         endian = self._get_endian(self.annotation["$BYTEORD"])
+        # Since we are only writing IEEE-754 single precision floating point numbers, we must
+        # ALWAYS change the "$DATATYPE" to "F"
         return BYTE_SEP + self._data.astype("{}f".format(endian)).tobytes()
 
     def write_to_file(self, path):
